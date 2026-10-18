@@ -16,8 +16,23 @@ def rebuild(path: Path):
     if original.size != (SOURCE_SIZE[0] * COUNT, SOURCE_SIZE[1]):
         raise ValueError(f"Unexpected source dimensions: {path}: {original.size}")
     output = Image.new("RGBA", (FRAME_SIZE[0] * COUNT, FRAME_SIZE[1]))
+    frames = [original.crop((i * SOURCE_SIZE[0], 0, (i + 1) * SOURCE_SIZE[0], SOURCE_SIZE[1])) for i in range(COUNT)]
+    # Several approved-source strips were cut into 104px cells despite horizontal
+    # sprite drift. Those cells physically omit the right side of later poses.
+    # Do not display half a character: reuse the closest complete earlier pose
+    # until full uncropped source poses can be re-extracted.
+    complete = []
+    for i, candidate in enumerate(frames):
+        bbox = candidate.getchannel("A").getbbox()
+        clipped = bbox is not None and bbox[2] == SOURCE_SIZE[0] and bbox[0] > 15
+        if clipped and complete:
+            frames[i] = frames[complete[-1]].copy()
+        else:
+            complete.append(i)
     for i in range(COUNT):
-        frame = original.crop((i * SOURCE_SIZE[0], 0, (i + 1) * SOURCE_SIZE[0], SOURCE_SIZE[1]))
+        frame = frames[i]
+        # Original per-cell extraction (retained below for stable anchor).
+        # frame = original.crop((i * SOURCE_SIZE[0], 0, (i + 1) * SOURCE_SIZE[0], SOURCE_SIZE[1]))
         bounds = frame.getchannel("A").getbbox()
         if bounds is None:
             continue
