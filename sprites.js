@@ -10,10 +10,21 @@ for(const [key,anims] of Object.entries(animations)){atlas[key]={};for(const [na
 function choose(f){if(!f.alive)return 'loss';if(f.key==='BASTION'){if(f.teleFx>0)return 'ability_teleport';if(f.dashLeft>0)return 'ability_dash'}else if(f.shotFx>0)return 'ability_shoot';return Math.hypot(f.vx||0,f.vy||0)>15?'walk':'idle'}
 function render(ctx,f,t,opts={}){const key=f.key||'BASTION',anim=opts.animation||choose(f),item=atlas[key]?.[anim]||atlas[key]?.idle;if(!item)return;const elapsed=opts.elapsed??(anim==='ability_shoot'&&f.shotFx>0?f.shotAge||0:t),phase=Math.floor(elapsed*item.fps)%item.frames,frame=item.safeFrames[phase%item.safeFrames.length],scale=opts.scale??.64;
  ctx.save();ctx.translate(f.x,f.y);
- // Display the actual authored sprite poses. No procedural bobbing, stretch,
- // squash, recoil, or fake motion: frame differences must come from artwork.
+ // Preserve authored frame cycling and layer subtle state-based animation on top.
+ const moving=Math.hypot(f.vx||0,f.vy||0)>15;
+ const dash=key==='BASTION'&&f.dashLeft>0;
+ const shooting=key==='VESPER'&&f.shotFx>0;
+ const walking=anim==='walk'&&moving;
+ const hitStrength=f.flash>0?Math.min(1,f.flash/.14):0;
+ const pulse=Math.sin(t*2.8);
+ const hop=walking?Math.abs(Math.sin(t*13))*2.3:Math.max(0,pulse)*.55;
+ const lean=!f.alive?.24:hitStrength?-.10:dash?.14:shooting?-.065:walking?Math.sin(t*13)*.045:Math.sin(t*2.8)*.009;
+ ctx.translate(-hitStrength*2*scale,(-hop+hitStrength*2)*scale);
  if((opts.facing??f.facing??1)<0)ctx.scale(-1,1);
- ctx.scale(scale,scale);
+ ctx.rotate(lean);
+ const stretch=hitStrength?.96:dash?1.13:shooting?.96:1;
+ const squash=hitStrength?1.04:dash?.88:walking?1+Math.sin(t*26)*.018:1;
+ ctx.scale(scale*stretch,scale*squash);
  ctx.imageSmoothingEnabled=false;
  if(item.ready)ctx.drawImage(item.img,frame*FRAME_W,0,FRAME_W,FRAME_H,-FRAME_W/2,-FRAME_H+6,FRAME_W,FRAME_H);
  else{ctx.fillStyle=f.color||'#fff';ctx.fillRect(-9,-23,18,23);ctx.strokeStyle='#fff';ctx.strokeRect(-10,-24,20,24)}
