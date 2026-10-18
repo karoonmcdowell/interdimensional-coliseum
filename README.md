@@ -1,24 +1,13 @@
-# Interdimensional Coliseum
+# Interdimensional Coliseum — v0.4
 
-An experimental autonomous spectator-combat simulation. The coliseum is the umbrella property; individual events and gladiators can evolve over time.
+Open `index.html` in a browser. No dependencies or server required. `engine.js` is also runnable in Node.js for headless matches.
 
-## Current prototype
+## Duelists
+- Bastion: 230 HP, 24% armor, 30 movement speed; dash deals 48 raw damage with ~2.9s cooldown; teleport ~10.8s cooldown.
+- Vesper: 125 HP, 3% armor, 132 movement speed; ranged projectile deals 23 raw damage with ~0.72s cooldown; kites and strafes.
 
-**v0.4 — Bastion vs. Vesper** is the current approved local prototype, pending import into this repository. Do not mistake this repository scaffold for the playable build.
+## Reproduce trials
+`node test.js 1000 10001` uses seeds 10001 through 11000, inclusive. Calibration was conducted on seeds 1–250, and the 1000-seed sample was a separate holdout. This is simulation-level balance, not audience validation. Outcomes depend on AI behavior and starting positions; 50/50 is not guaranteed in every small sample.
 
-## Workflow
-
-- `main`: stable, reviewed versions.
-- `develop`: work in progress and proposed changes.
-- Preserve seeded, deterministic combat simulation and headless batch testing.
-- Validate changes with match statistics (win rates, draws, duration) and browser viewing before promotion to `main`.
-- Publish a GitHub Pages preview after the playable source is imported.
-
-## Initial combatants
-
-- **Bastion:** slow armored dash fighter with a long-cooldown teleport.
-- **Vesper:** fast ranged fighter that strafes and kites.
-
-## Project status
-
-Repository initialization in progress. No playable files have been published here yet.
+## Next priorities
+Improve spectator pacing (current median ~9.8 simulated seconds), visual tells, projectile readability, combat event metrics, and evaluate positional/seed biases before expanding to more gladiators.
