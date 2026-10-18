@@ -16,29 +16,43 @@ def rebuild(path: Path):
     if original.size != (SOURCE_SIZE[0] * COUNT, SOURCE_SIZE[1]):
         raise ValueError(f"Unexpected source dimensions: {path}: {original.size}")
     output = Image.new("RGBA", (FRAME_SIZE[0] * COUNT, FRAME_SIZE[1]))
-    frames = [original.crop((i * SOURCE_SIZE[0], 0, (i + 1) * SOURCE_SIZE[0], SOURCE_SIZE[1])) for i in range(COUNT)]
-    # Several approved-source strips were cut into 104px cells despite horizontal
-    # sprite drift. Those cells physically omit the right side of later poses.
-    # Do not display half a character: reuse the closest complete earlier pose
-    # until full uncropped source poses can be re-extracted.
-    complete = []
-    for i, candidate in enumerate(frames):
-        bbox = candidate.getchannel("A").getbbox()
-        clipped = bbox is not None and (bbox[2] >= SOURCE_SIZE[0] - 2 or bbox[0] <= 1)
-        if not clipped:
-            complete.append(i)
-    if not complete:
-        complete = [max(range(COUNT), key=lambda i: (frames[i].getchannel('A').getbbox() or (0,0,0,0))[2] - (frames[i].getchannel('A').getbbox() or (0,0,0,0))[0])]
-    for i in range(COUNT):
-        bbox = frames[i].getchannel('A').getbbox()
-        clipped = bbox is not None and (bbox[2] >= SOURCE_SIZE[0] - 2 or bbox[0] <= 1)
-        if clipped:
-            nearest = min(complete, key=lambda j: abs(i-j))
-            frames[i] = frames[nearest].copy()
+    # Source sprites drift horizontally: the 104px grid is NOT a reliable
+    # crop boundary. Locate the four foreground clusters from alpha coverage.
+    alpha = original.getchannel("A")
+    column_counts = []
+    for x in range(original.width):
+        column_counts.append(sum(1 for y in range(original.height) if alpha.getpixel((x,y)) > 100))
+    # Treat short gaps inside a pose as part of that pose, but preserve the
+    # larger spaces between the four characters.
+    active = [v >= 2 for v in column_counts]
+    for x in range(1, len(active)-3):
+        if active[x-1] and not active[x] and any(active[x+1:x+4]):
+            active[x] = True
+    runs = []
+    begin = None
+    for x, yes in enumerate(active + [False]):
+        if yes and begin is None:
+            begin = x
+        if not yes and begin is not None:
+            if x-begin >= 12:
+                runs.append((begin,x))
+            begin = None
+    # Four approximate cells are expected, but unlike fixed 104px slicing,
+    # each pose may cross the old cell boundary. Extract by actual alpha.
+    frames = []
+    for left,right in runs:
+        piece = original.crop((left,0,right,original.height))
+        if piece.getchannel("A").getbbox():
+            frames.append(piece)
+    # Use only genuinely complete poses. A run touching the sheet edge is
+    # not a full pose unless it is naturally smaller than the others.
+    if len(frames) < 2:
+        raise RuntimeError(f"Could not separate source poses: {path}, runs={runs}")
+    if runs[-1][1] >= original.width-1 and len(frames) > 2:
+        frames.pop()
+    frames = [frames[i % len(frames)] for i in range(COUNT)]
     for i in range(COUNT):
         frame = frames[i]
-        # Original per-cell extraction (retained below for stable anchor).
-        # frame = original.crop((i * SOURCE_SIZE[0], 0, (i + 1) * SOURCE_SIZE[0], SOURCE_SIZE[1]))
         bounds = frame.getchannel("A").getbbox()
         if bounds is None:
             continue
