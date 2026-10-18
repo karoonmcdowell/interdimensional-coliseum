@@ -1,70 +1,82 @@
-# Character art and animation pipeline (v0.5)
+# Character Sprite Pipeline — 24px Monochrome v2
 
-## Goals
-- Keep combat logic independent from art.
-- Support authored pixel-art characters and cheap frame-by-frame animation.
-- Allow designers to replace art files without editing engine logic.
-- Preserve reproducible seeded matches and the approved v0.4 game on `main`.
+## Art contract
+- Native canvas: **24 x 24 pixels** per frame, transparent background.
+- Each fighter has **one opaque foreground color** plus transparent pixels; no outlines, highlights, gradients, or antialiasing.
+- Silhouette must read at native resolution. Use clusters of pixels, not thin decorative detail.
+- On-screen draw scale target: **1.5–2x**, subject to arena review; do not enlarge to 48x/64x artwork.
+- Ground anchor: pixel coordinate (12, 22). All frames align their feet to that anchor. No auto-centering by frame bounds.
+- The art may deliberately exaggerate proportions and action poses. Readability is more important than realistic anatomy.
+- Export PNG with nearest-neighbor scaling and exact alpha (0 or 255).
 
-## Art direction
-- Low-resolution pixel art inspired by early console western games, but more expressive than stick figures.
-- Distinct readable silhouettes at small sizes; no dependence on fine detail.
-- Use nearest-neighbor rendering (no image smoothing), transparent backgrounds, consistent feet anchor.
-- Character base frame canvas: 48 x 48 px; character can be scaled 2x or 3x in the game. Consistent ground-contact origin at x=24, y=42.
-- Character faces screen-left or screen-right using horizontal flip; avoid rotating the full sprite arbitrarily.
+## Character identity
+**Bastion**: broad, heavy armored paladin, shield projects ahead of torso. Distinct shield-forward charge silhouette, low braced windup, forward lean and extended shield on dash, staggered recovery.
 
-## Character briefs
-**Bastion**: massive armored space paladin with broad shield, heavy boots, short squat silhouette. Shield is recognizable even at thumbnail scale. Walk is slow with strong planted footfalls. Dash includes visible wind-up, a committed forward burst, and recovery. Teleport gets a distinct vanish/reappear effect.
+**Vesper**: space cowgirl, unmistakable hat brim/crown, narrower waist, angled hip, expressive stance and hair/ponytail or scarf in silhouette. Gun arm projects clearly away from body. Shooting animation must show a distinct arm extension and recoil. Avoid relying on stereotyped proportions alone; prioritize gesture and attitude.
 
-**Vesper**: agile space cowgirl with hat/helmet hybrid, compact pistol, slim asymmetrical silhouette, expressive poncho/scarf. Walk is a smooth side-step. Shot has a sharp muzzle-flash pose. Dodge roll is visually distinctive, with explicit invulnerable frames governed by the combat engine (not the artwork).
+## Sprite files
+Use one PNG spritesheet per animation, arranged horizontally. Each frame is 24x24 pixels. A 4-frame animation is a 96x24 PNG. Filenames are not semantic to the engine; the manifest maps states to paths.
 
-## Folder convention
 ```
-assets/characters/
-  bastion/
-    manifest.json
-    idle.png
-    walk.png
-    ability_dash.png
-    ability_teleport.png
-    loss.png
-    win.png
-  vesper/
-    manifest.json
-    idle.png
-    walk.png
-    ability_shoot.png
-    ability_roll.png
-    loss.png
-    win.png
+assets/characters/bastion/manifest.json
+assets/characters/bastion/idle.png
+assets/characters/bastion/walk.png
+assets/characters/bastion/dash_windup.png
+assets/characters/bastion/dash.png
+assets/characters/bastion/dash_recovery.png
+assets/characters/bastion/teleport.png
+assets/characters/bastion/loss.png
+assets/characters/bastion/win.png
+assets/characters/vesper/manifest.json
+assets/characters/vesper/idle.png
+assets/characters/vesper/walk.png
+assets/characters/vesper/shoot.png
+assets/characters/vesper/roll.png
+assets/characters/vesper/loss.png
+assets/characters/vesper/win.png
 ```
 
-Each PNG is a horizontal spritesheet of 48x48 transparent frames. The manifest describes each sheet's frame count, fps, whether it loops, and the gameplay animation key. Never encode collision boxes or invulnerability in the sprite manifest.
+## Manifest example
+```json
+{
+  "id": "vesper",
+  "frameSize": [24, 24],
+  "anchor": [12, 22],
+  "color": "#6bd5ff",
+  "animations": {
+    "idle": { "src": "idle.png", "frames": 2, "fps": 3, "loop": true },
+    "walk": { "src": "walk.png", "frames": 4, "fps": 8, "loop": true },
+    "shoot": { "src": "shoot.png", "frames": 3, "fps": 12, "loop": false, "events": [{ "frame": 1, "name": "muzzle" }] },
+    "roll": { "src": "roll.png", "frames": 4, "fps": 12, "loop": false }
+  }
+}
+```
 
-## Animation priorities
-1. loss / win (terminal)
-2. ability (dash, teleport, shoot, roll)
-3. walk (moving)
-4. idle
+## Engine vs art
+- Engine controls actual attacks, projectile spawn positions, invulnerability, collision, damage and cooldowns.
+- Animation controller receives **timed combat events** (e.g. shoot_start, projectile_release, dash_windup, dash_start, dash_end, roll_start, death, victory).
+- Animation controller must not infer gunfire from shot cooldown alone. Event sequences must be observable in replay.
+- Weapon muzzle offset is **authored in local sprite pixels per attack frame**, mirrored when facing left, transformed to world position using draw scale, and used by the engine for projectile origin. The art preview draws a visible muzzle marker. Validate muzzle offsets against sprite poses.
+- Visual frame selection is deterministic for a given simulation timestamp and event log. Do not restart one-shot animations on every render tick.
+- Facing direction is explicit in engine state; flipping only based on velocity is insufficient for strafing/shooting.
+- During a dash, Bastion must display the dash pose. During a shot, Vesper must display the shooting pose. Win/loss persist after combat ends.
+- Roll invulnerability is an engine-owned interval (startup/active/recovery) and is not implied by the sprite image.
 
-One-shot animations should not restart every tick; use a transition timestamp or animation instance counter. Engine events trigger ability animations. Render the sprite centered horizontally with its feet anchored to the entity's ground position. Use a fallback placeholder if an image fails to load.
+## Editor and preview acceptance
+1. Grid-based frame editor with pencil/erase, onion skin, frame navigation and preview playback (or use Aseprite/LibreSprite and import exported PNGs).
+2. Preview character at **1x, 2x, and actual arena size**, on contrasting arena backgrounds.
+3. Preview every animation state without running a duel.
+4. Display ground anchor, collision radius and weapon muzzle anchor overlays.
+5. Changing PNG artwork never requires changes to combat math.
+6. Missing or invalid sprite assets fall back visibly and log warnings; never silently substitute old art as though approved.
+7. Test with seeded duels and confirm art-only revisions do not alter outcomes.
 
-## Mechanics requirements for Vesper roll
-- Separate roll cooldown and roll duration.
-- Direction chosen by evasive AI using the current threat and arena boundaries.
-- Invulnerability window begins *after* roll startup and ends *before* roll recovery; collision and damage logic consults engine-owned invulnerability state.
-- Roll must not make Vesper uncatchable: test usage rate, effective avoided damage, win rates, and arena edge behavior across seeded batches.
+## Implementation order
+1. **Freeze gameplay on main** while replacing the v0.5A placeholder renderer on develop.
+2. Build native 24px sprites and manifest loader; implement preview at native and arena scales.
+3. Add explicit timed animation events and weapon origin anchors to the engine.
+4. Connect Bastion dash and Vesper shooting to unique poses and events.
+5. Implement Vesper dodge roll with actual engine-owned invulnerability and rebalance using seeded batches.
+6. Promote after visual review and regression tests.
 
-## Acceptance criteria
-1. Both characters have authored idle, walk, ability, loss, and win animations.
-2. Sprite changes require no edits to engine.js.
-3. Missing or malformed art does not crash matches.
-4. Battle simulation results remain unchanged when only art files are replaced.
-5. Roll invulnerability is mechanically testable in headless simulations.
-6. UI can preview individual animation states without running a duel.
-
-## Release plan
-- Stage A: import the animation manifest schema and sprite renderer, with fallback silhouettes.
-- Stage B: author and import character spritesheets.
-- Stage C: add Vesper roll to the simulation, tune in batches, and review visually.
-- Stage D: merge to `main` only after user approves visuals and balance.
+**Status:** specification only. v0.5A currently uses 48px multi-color fallback figures; the new art contract is not yet implemented.
