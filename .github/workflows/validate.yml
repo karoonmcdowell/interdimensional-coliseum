@@ -1,0 +1,20 @@
+name: Duel regression
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+jobs:
+  simulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify game source syntax
+        run: |
+          node --check engine.js
+          node --check test.js
+      - name: Run 1000 deterministic duels
+        run: node test.js 1000 200001
