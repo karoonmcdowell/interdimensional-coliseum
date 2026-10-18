@@ -14,5 +14,6 @@ function render(ctx,f,t,opts={}){const key=f.key||'BASTION',anim=opts.animation|
  else{ctx.fillStyle=f.color||'#fff';ctx.fillRect(-9,-23,18,23);ctx.strokeStyle='#fff';ctx.strokeRect(-10,-24,20,24)}
  ctx.restore();return {animation:anim,frame,source:item.ready?'approved PNG':item.error?'missing asset':'loading'}}
 function exportSheet(key,anim){const item=atlas[key]?.[anim];return item?.ready?item.img.src:null}
-function readiness(){const missing=[];let ready=0;for(const [key,anims] of Object.entries(atlas))for(const [name,item] of Object.entries(anims)){if(item.ready)ready++;else missing.push(key+'/'+name)}return {ready,total:ready+missing.length,missing}}\nroot.ColiseumSprites={readiness,definitions:Object.fromEntries(Object.entries(animations).map(([k,v])=>[k,{animations:Object.fromEntries(Object.entries(v).map(([a,[frames,fps]])=>[a,{frames,fps}]))}])),render,choose,exportSheet,FRAME:FRAME_W,FRAME_HEIGHT:FRAME_H};
+function readiness(){const missing=[];let ready=0;for(const [key,anims] of Object.entries(atlas))for(const [name,item] of Object.entries(anims)){if(item.ready)ready++;else missing.push(key+'/'+name)}return {ready,total:ready+missing.length,missing}}
+root.ColiseumSprites={readiness,definitions:Object.fromEntries(Object.entries(animations).map(([k,v])=>[k,{animations:Object.fromEntries(Object.entries(v).map(([a,[frames,fps]])=>[a,{frames,fps}]))}])),render,choose,exportSheet,FRAME:FRAME_W,FRAME_HEIGHT:FRAME_H};
 })(window);
