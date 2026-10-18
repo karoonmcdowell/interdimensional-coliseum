@@ -12,21 +12,28 @@ function render(ctx,f,t,opts={}){const key=f.key||'BASTION',anim=opts.animation|
  ctx.save();ctx.translate(f.x,f.y);
  // Subtle, state-aware motion supplements the intact source poses.
  // All transforms happen about the fighter's feet, not the sheet origin.
- const moving=Math.hypot(f.vx||0,f.vy||0)>15;
+ const speed=Math.hypot(f.vx||0,f.vy||0);
+ const moving=speed>15;
+ const hit=!!(f.flash>0);
+ const defeated=!f.alive;
  const dash=key==='BASTION'&&f.dashLeft>0;
  const shooting=key==='VESPER'&&f.shotFx>0;
  const roll=anim==='ability_roll';
  const walking=anim==='walk'&&moving;
  const pulse=walking?Math.sin(t*13):Math.sin(t*2.8);
  const hop=walking?Math.abs(Math.sin(t*13))*2.3:Math.max(0,pulse)*.55;
- const lean=dash?.14:roll?.20:shooting?-.065:walking?Math.sin(t*13)*.045:Math.sin(t*2.8)*.009;
- ctx.translate(0,-hop*scale);
+ // Short impact compression, readable even when a damaged source strip repeats a pose.
+ const hitStrength=hit?Math.min(1,(f.flash||0)/.14):0;
+ const impactOffset=hitStrength*2.4;
+ const lean=defeated?.30:hit?-.12:dash?.14:roll?.20:shooting?-.065:walking?Math.sin(t*13)*.045:Math.sin(t*2.8)*.009;
+ ctx.translate(-hitStrength*2.5*scale,(-hop+impactOffset)*scale);
  if((opts.facing??f.facing??1)<0)ctx.scale(-1,1);
  ctx.rotate(lean);
- const stretch=dash?1.13:shooting?.96:1;
- const squash=dash?.88:walking?1+Math.sin(t*26)*.018:1;
+ const stretch=hit?.93:dash?1.13:shooting?.96:1;
+ const squash=hit?1.07:dash?.88:walking?1+Math.sin(t*26)*.018:1;
  ctx.scale(scale*stretch,scale*squash);
  ctx.imageSmoothingEnabled=false;
+ if(hit)ctx.globalAlpha=.68+.32*(1-hitStrength);
  if(item.ready)ctx.drawImage(item.img,frame*FRAME_W,0,FRAME_W,FRAME_H,-FRAME_W/2,-FRAME_H+6,FRAME_W,FRAME_H);
  else{ctx.fillStyle=f.color||'#fff';ctx.fillRect(-9,-23,18,23);ctx.strokeStyle='#fff';ctx.strokeRect(-10,-24,20,24)}
  ctx.restore();return {animation:anim,frame,source:item.ready?'approved PNG':item.error?'missing asset':'loading'}}
