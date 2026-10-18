@@ -17,13 +17,13 @@ function render(ctx,f,t,opts={}){const key=f.key||'BASTION',anim=opts.animation|
  const walking=anim==='walk'&&moving;
  const hitStrength=f.flash>0?Math.min(1,f.flash/.14):0;
  const pulse=Math.sin(t*2.8);
- const hop=walking?Math.abs(Math.sin(t*13))*2.3:Math.max(0,pulse)*.55;
- const lean=!f.alive?.24:hitStrength?-.10:dash?.14:shooting?-.065:walking?Math.sin(t*13)*.045:Math.sin(t*2.8)*.009;
- ctx.translate(-hitStrength*2*scale,(-hop+hitStrength*2)*scale);
+ const hop=walking?Math.abs(Math.sin(t*12))*8:Math.max(0,pulse)*3;
+ const lean=!f.alive?.30:hitStrength?-.20:dash?.24:shooting?-.14:walking?Math.sin(t*12)*.11:Math.sin(t*2.8)*.035;
+ ctx.translate(-hitStrength*5*scale,(-hop+hitStrength*4)*scale);
  if((opts.facing??f.facing??1)<0)ctx.scale(-1,1);
  ctx.rotate(lean);
- const stretch=hitStrength?.96:dash?1.13:shooting?.96:1;
- const squash=hitStrength?1.04:dash?.88:walking?1+Math.sin(t*26)*.018:1;
+ const stretch=hitStrength?.90:dash?1.25:shooting?.90:1;
+ const squash=hitStrength?1.12:dash?.80:walking?1+Math.sin(t*24)*.055:1;
  ctx.scale(scale*stretch,scale*squash);
  ctx.imageSmoothingEnabled=false;
  if(item.ready)ctx.drawImage(item.img,frame*FRAME_W,0,FRAME_W,FRAME_H,-FRAME_W/2,-FRAME_H+6,FRAME_W,FRAME_H);
