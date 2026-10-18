@@ -24,11 +24,17 @@ def rebuild(path: Path):
     complete = []
     for i, candidate in enumerate(frames):
         bbox = candidate.getchannel("A").getbbox()
-        clipped = bbox is not None and bbox[2] == SOURCE_SIZE[0] and bbox[0] > 15
-        if clipped and complete:
-            frames[i] = frames[complete[-1]].copy()
-        else:
+        clipped = bbox is not None and (bbox[2] >= SOURCE_SIZE[0] - 2 or bbox[0] <= 1)
+        if not clipped:
             complete.append(i)
+    if not complete:
+        complete = [max(range(COUNT), key=lambda i: (frames[i].getchannel('A').getbbox() or (0,0,0,0))[2] - (frames[i].getchannel('A').getbbox() or (0,0,0,0))[0])]
+    for i in range(COUNT):
+        bbox = frames[i].getchannel('A').getbbox()
+        clipped = bbox is not None and (bbox[2] >= SOURCE_SIZE[0] - 2 or bbox[0] <= 1)
+        if clipped:
+            nearest = min(complete, key=lambda j: abs(i-j))
+            frames[i] = frames[nearest].copy()
     for i in range(COUNT):
         frame = frames[i]
         # Original per-cell extraction (retained below for stable anchor).
