@@ -44,7 +44,7 @@ function choose(s,f,o){const d=dist(f,o),r=s.random(),goal=f.objective;
  if(o.state==='block'&&r<.70){begin(f,'breaker');return}
  if(r<.57)begin(f,'light');else if(r<.85)begin(f,'heavy');else if(r<.95)begin(f,'breaker');else guard(f)}
 function step(s,dt=DT){if(s.ended)return;s.time+=dt;for(const e of s.effects)e.life-=dt;s.effects=s.effects.filter(e=>e.life>0);
- for(const f of s.agents){const o=s.agents[1-f.id];f.facing=Math.atan2(o.y-f.y,o.x-f.x);f.flash=Math.max(0,f.flash-dt);f.cooldown=Math.max(0,f.cooldown-dt);f.comboTimer=Math.max(0,f.comboTimer-dt);if(f.comboTimer<=0)f.combo=0;if(f.state!=='block')f.guard=Math.min(100,f.guard+11*dt);chooseObjective(s,f,o);
+ for(const f of s.agents){const o=s.agents[1-f.id];f.facing=Math.atan2(o.y-f.y,o.x-f.x);f.flash=Math.max(0,f.flash-dt);f.cooldown=Math.max(0,f.cooldown-dt);f.comboTimer=Math.max(0,f.comboTimer-dt);if(f.comboTimer<=0)f.combo=0;if(f.state!=='block')f.guard=Math.min(100,f.guard+11*dt);if(f.state==='neutral'&&f.cooldown<=0)chooseObjective(s,f,o);
  if(f.state==='neutral'){if(f.cooldown<=0)choose(s,f,o);if(f.state==='neutral')steer(s,f,o)}
  if(f.state==='hitstun'){f.vx*=Math.max(0,1-dt*1.2);f.vy*=Math.max(0,1-dt*1.2)}else if(f.state==='wallsplat'){f.vx=0;f.vy=0}else if(f.state==='sidestep'){f.vx=-Math.sin(f.facing)*f.side*235;f.vy=Math.cos(f.facing)*f.side*235}else if(f.state==='dash'){const sign=f.objective==='reposition'?-1:1;f.vx=Math.cos(f.facing)*310*sign;f.vy=Math.sin(f.facing)*310*sign}else if(f.state!=='neutral'){f.vx*=Math.max(0,1-dt*17);f.vy*=Math.max(0,1-dt*17)}
  f.x+=f.vx*dt;f.y+=f.vy*dt;pillarCollision(s,f);bound(s,f)}
