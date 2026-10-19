@@ -3,7 +3,7 @@ single PNG; each row has four unique frames. Works for new characters by
 adding rows to the atlas manifest, never by hand-editing draw offsets. */
 (function(root){'use strict';
 const URL='assets/characters/coliseum-atlas.png';
-const W=144,H=100,FRAMES=4;
+const W=108,H=75,FRAMES=4;
 const rows={BASTION:{idle:0,walk:1,ability_dash:2,ability_teleport:2,attack:3,loss:4,win:5},VESPER:{idle:6,walk:7,ability_shoot:8,ability_roll:9,loss:10,win:11}};
 const fps={idle:3,walk:9,ability_dash:12,ability_teleport:12,attack:10,ability_shoot:13,ability_roll:12,loss:5,win:5};
 const img=new Image();let ready=false,error=false;
@@ -12,7 +12,7 @@ img.onerror=()=>{error=true;console.error('Missing unified character atlas',URL)
 img.src=URL+'?v=unified-atlas-1';
 function choose(f){if(!f.alive)return 'loss';if(f.key==='BASTION'){if(f.teleFx>0)return 'ability_teleport';if(f.dashLeft>0)return 'ability_dash'}else if(f.shotFx>0)return 'ability_shoot';return Math.hypot(f.vx||0,f.vy||0)>15?'walk':'idle'}
 function render(ctx,f,t,opts={}){const key=f.key||'BASTION',animation=opts.animation||choose(f),row=rows[key]?.[animation]??rows[key]?.idle;if(row===undefined)return;
- const elapsed=opts.elapsed??t,frame=Math.floor(elapsed*(fps[animation]||3))%FRAMES,scale=opts.scale??.64;
+ const elapsed=opts.elapsed??t,frame=Math.floor(elapsed*(fps[animation]||3))%FRAMES,scale=opts.scale??.85;
  ctx.save();ctx.translate(f.x,f.y);
  const moving=Math.hypot(f.vx||0,f.vy||0)>15;
  const dash=key==='BASTION'&&f.dashLeft>0,shooting=key==='VESPER'&&f.shotFx>0;
