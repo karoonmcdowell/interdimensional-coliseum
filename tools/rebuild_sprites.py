@@ -16,41 +16,17 @@ def rebuild(path: Path):
     if original.size != (SOURCE_SIZE[0] * COUNT, SOURCE_SIZE[1]):
         raise ValueError(f"Unexpected source dimensions: {path}: {original.size}")
     output = Image.new("RGBA", (FRAME_SIZE[0] * COUNT, FRAME_SIZE[1]))
-    # Source sprites drift horizontally: the 104px grid is NOT a reliable
-    # crop boundary. Locate the four foreground clusters from alpha coverage.
-    alpha = original.getchannel("A")
-    column_counts = []
-    for x in range(original.width):
-        column_counts.append(sum(1 for y in range(original.height) if alpha.getpixel((x,y)) > 100))
-    # Treat short gaps inside a pose as part of that pose, but preserve the
-    # larger spaces between the four characters.
-    active = [v >= 2 for v in column_counts]
-    for x in range(1, len(active)-3):
-        if active[x-1] and not active[x] and any(active[x+1:x+4]):
-            active[x] = True
-    runs = []
-    begin = None
-    for x, yes in enumerate(active + [False]):
-        if yes and begin is None:
-            begin = x
-        if not yes and begin is not None:
-            if x-begin >= 12:
-                runs.append((begin,x))
-            begin = None
-    # Four approximate cells are expected, but unlike fixed 104px slicing,
-    # each pose may cross the old cell boundary. Extract by actual alpha.
-    frames = []
-    for left,right in runs:
-        piece = original.crop((left,0,right,original.height))
-        if piece.getchannel("A").getbbox():
-            frames.append(piece)
-    # Use only genuinely complete poses. A run touching the sheet edge is
-    # not a full pose unless it is naturally smaller than the others.
-    if len(frames) < 2:
-        raise RuntimeError(f"Could not separate source poses: {path}, runs={runs}")
-    if runs[-1][1] >= original.width-1 and len(frames) > 2:
-        frames.pop()
-    frames = [frames[i % len(frames)] for i in range(COUNT)]
+    # The approved 416x76 strips contain poses at approximately x=20,
+    # x=140, x=260 and x=380, NOT four evenly spaced 104px cells.
+    # A pose's shield, gun, or effects can be disconnected from the body;
+    # alpha-connected-component extraction would incorrectly discard them.
+    # Boundaries below enclose entire poses INCLUDING detached equipment.
+    # The fourth pose extends beyond the right edge of the damaged source,
+    # so reuse the last complete pose rather than render a partial body.
+    boundaries = (0, 112, 224, 370)
+    frames = [original.crop((boundaries[i], 0, boundaries[i+1], original.height))
+              for i in range(3)]
+    frames.append(frames[2].copy())
     for i in range(COUNT):
         frame = frames[i]
         bounds = frame.getchannel("A").getbbox()
