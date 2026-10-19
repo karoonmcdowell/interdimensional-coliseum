@@ -2,8 +2,8 @@
 (function(root){'use strict';
 const CX=270,CY=300,R=218,TAU=Math.PI*2,DT=1/60;
 const BASE={
- BASTION:{name:'BASTION',color:'#ff816f',label:'Dash tank / teleporter',hp:230,armor:.24,walk:30,dashDamage:48,dashCD:2.9,teleCD:10.8,dashSpeed:520,dashDuration:.28},
- VESPER:{name:'VESPER',color:'#6bd5ff',label:'Mobile ranged gunner',hp:125,armor:.03,walk:132,shotDamage:23,shotCD:.72,bulletSpeed:350,preferred:165}
+ BASTION:{name:'BASTION',color:'#ff816f',label:'Dash tank / teleporter',hp:920,armor:.24,walk:30,dashDamage:25,dashCD:2.9,teleCD:10.8,dashSpeed:520,dashDuration:.28},
+ VESPER:{name:'VESPER',color:'#6bd5ff',label:'Mobile ranged gunner',hp:500,armor:.03,walk:132,shotDamage:11.5,shotCD:.72,bulletSpeed:350,preferred:165}
 };
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function rng(seed){let s=seed>>>0;return ()=>{s+=0x6D2B79F5;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296}}
@@ -51,9 +51,9 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
  }
  // Bullet collision, including dash vulnerability.
  const keep=[];for(const p of s.projectiles){if(p.life<=0||Math.hypot(p.x-CX,p.y-CY)>R-5)continue;if(Math.hypot(p.x-a.x,p.y-a.y)<17){hit(s,b,a,b.shotDamage,'shot');continue}keep.push(p)}s.projectiles=keep;
- // Anti-stall: progressively stronger global damage after 45 seconds, identical raw damage per second.
+ // Anti-stall: progressively stronger global damage after 85 seconds, identical raw damage per second.
  // Because armor is ignored here, this is not a hidden advantage for either fighter.
- if(s.time>45){const fatigue=(s.time-45)*.065*dt;for(const f of s.agents)if(f.alive){f.hp=Math.max(0,f.hp-fatigue);if(f.hp===0){f.alive=false;event(s,`${f.name} falls in overtime`)}}}
+ if(s.time>85){const fatigue=(s.time-85)*.065*dt;for(const f of s.agents)if(f.alive){f.hp=Math.max(0,f.hp-fatigue);if(f.hp===0){f.alive=false;event(s,`${f.name} falls in overtime`)}}}
  if(!a.alive||!b.alive||s.time>=110){s.ended=true;if(a.alive&&!b.alive)s.winner=a;else if(b.alive&&!a.alive)s.winner=b;else {const ah=a.hp/a.maxHp,bh=b.hp/b.maxHp;s.winner=ah>bh?a:bh>ah?b:(a.dealt>=b.dealt?a:b);s.reason='decision';}event(s,`${s.winner.name} wins${s.reason?' by decision':''}`)}
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={create,step,BASE,CX,CY,R,DT};else root.ColiseumEngine={create,step,BASE,CX,CY,R,DT};
