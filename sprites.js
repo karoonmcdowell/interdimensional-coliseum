@@ -5,13 +5,6 @@ const animations={
  BASTION:{idle:[4,3],walk:[4,8],ability_dash:[4,12,'dash'],ability_teleport:[4,12,'dash'],loss:[4,5],win:[4,5],attack:[4,10]},
  VESPER:{idle:[4,3],walk:[4,9],ability_shoot:[4,13,'shoot'],ability_roll:[4,12,'roll'],loss:[4,5],win:[4,5]}
 };
-// Shield is sourced directly from the complete first approved Bastion pose.
-// The damaged atlas sometimes truncates this prop, so render the intact source
-// shield over the animated body instead of drawing an invented replacement.
-const shieldSource=new Image();
-let shieldReady=false;
-shieldSource.onload=()=>{shieldReady=shieldSource.naturalWidth===416&&shieldSource.naturalHeight===76};
-shieldSource.src='coliseum_approved_art_integration/assets/characters/bastion/idle.png';
 const atlas={};
 for(const [key,anims] of Object.entries(animations)){atlas[key]={};for(const [name,[frames,fps,alias]] of Object.entries(anims)){const img=new Image(),file=alias||name;const item={img,frames,fps,ready:false,error:false,safeFrames:[0,1,2,3]};atlas[key][name]=item;img.onload=()=>{item.ready=img.naturalWidth===FRAME_W*FRAMES&&img.naturalHeight===FRAME_H;if(item.ready){const probe=document.createElement('canvas');probe.width=img.naturalWidth;probe.height=img.naturalHeight;const pc=probe.getContext('2d',{willReadFrequently:true});pc.drawImage(img,0,0);const pixels=pc.getImageData(0,0,probe.width,probe.height).data;const valid=[];for(let n=0;n<FRAMES;n++){let edge=0,occupied=0;for(let y=5;y<FRAME_H-5;y++)for(let x=0;x<FRAME_W;x++){const a=pixels[(y*probe.width+n*FRAME_W+x)*4+3];if(a>100){occupied++;if(x<3||x>FRAME_W-4)edge++}}if(occupied>60&&edge<3)valid.push(n)}item.safeFrames=valid.length?valid:[0];}else console.warn('Invalid spritesheet size:',img.src)};img.onerror=()=>{item.error=true;console.warn('Missing approved sprite asset:',img.src)};img.src='assets/characters/'+key.toLowerCase()+'/'+file+'.png'}}
 function choose(f){if(!f.alive)return 'loss';if(f.key==='BASTION'){if(f.teleFx>0)return 'ability_teleport';if(f.dashLeft>0)return 'ability_dash'}else if(f.shotFx>0)return 'ability_shoot';return Math.hypot(f.vx||0,f.vy||0)>15?'walk':'idle'}
@@ -35,9 +28,7 @@ function render(ctx,f,t,opts={}){const key=f.key||'BASTION',anim=opts.animation|
  ctx.imageSmoothingEnabled=false;
  if(item.ready){
   ctx.drawImage(item.img,frame*FRAME_W,0,FRAME_W,FRAME_H,-FRAME_W/2,-FRAME_H+6,FRAME_W,FRAME_H);
-  // Full original shield occupies x=70..86, y=20..69 of Bastion's source pose.
-  // Its independent overlay guarantees a complete shield in every action.
-  if(key==='BASTION'&&shieldReady)ctx.drawImage(shieldSource,70,20,16,49,17,-75,16,49);
+  
 }
  else{ctx.fillStyle=f.color||'#fff';ctx.fillRect(-9,-23,18,23);ctx.strokeStyle='#fff';ctx.strokeRect(-10,-24,20,24)}
  ctx.restore();return {animation:anim,frame,source:item.ready?'approved PNG':item.error?'missing asset':'loading'}}
