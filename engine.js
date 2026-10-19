@@ -10,7 +10,7 @@ function rng(seed){let s=seed>>>0;return ()=>{s+=0x6D2B79F5;let t=s;t=Math.imul(
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function create(seed=1,settings={}){const mode=settings.mode==='hill'?'hill':'duel';const random=rng(seed),angle=random()*TAU,offset=125,swap=random()<.5?1:-1;
  const cfg={BASTION:{...BASE.BASTION,...(settings.BASTION||{})},VESPER:{...BASE.VESPER,...(settings.VESPER||{})}};
- const agents=['BASTION','VESPER'].map((key,i)=>{const t=cfg[key],a=angle+(i?Math.PI:0);return {...t,key,id:i,x:CX+Math.cos(a)*offset,y:CY+Math.sin(a)*offset,vx:0,vy:0,hp:t.hp,maxHp:t.hp,alive:true,heading:a+(i?Math.PI:0),dashCd:i===0?random()*.6:0,teleCd:i===0?2+random()*1.4:0,shotCd:i===1?random()*.45:0,dashLeft:0,dashHit:false,teleFx:0,shotFx:0,facing:i===0?1:-1,flash:0,aim:0,strafe:swap,decision:0,stun:0,dealt:0,shots:0,hits:0,abilities:0}});
+ const agents=['BASTION','VESPER'].map((key,i)=>{const t=cfg[key],a=angle+(i?Math.PI:0);return {...t,key,id:i,x:CX+Math.cos(a)*offset,y:CY+Math.sin(a)*offset,vx:0,vy:0,hp:t.hp,maxHp:t.hp,alive:true,heading:a+(i?Math.PI:0),dashCd:i===0?random()*.6:0,teleCd:i===0?2+random()*1.4:0,shotCd:i===1?random()*.45:0,dashLeft:0,dashHit:false,shieldCd:3+random()*2,teleFx:0,shotFx:0,facing:i===0?1:-1,flash:0,aim:0,strafe:swap,decision:0,stun:0,dealt:0,shots:0,hits:0,abilities:0}});
  return {seed,random,cfg,agents,time:0,ended:false,winner:null,reason:'',events:[],projectiles:[],effects:[],lastDamage:0,damageRamp:0,hazards:[],hazardCycle:-1,mode,hill:mode==='hill'?{x:CX,y:CY,r:65,scores:[0,0],target:14,owner:-1}:null};}
 function event(s,msg){s.events.push({time:s.time,msg});if(s.events.length>25)s.events.shift()}
 function effect(s,x,y,color,type='spark'){if(s.effects.length<100)s.effects.push({x,y,color,type,life:.35})}
@@ -25,7 +25,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
  for(const p of s.effects)p.life-=dt;s.effects=s.effects.filter(p=>p.life>0);
  for(const p of s.projectiles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;}
  for(const f of s.agents){f.flash=Math.max(0,f.flash-dt);f.shotFx=Math.max(0,(f.shotFx||0)-dt);f.teleFx=Math.max(0,f.teleFx-dt);f.stun=Math.max(0,f.stun-dt)}
- a.dashCd=Math.max(0,a.dashCd-dt);a.teleCd=Math.max(0,a.teleCd-dt);b.shotCd=Math.max(0,b.shotCd-dt);
+ a.shieldCd=Math.max(0,a.shieldCd-dt);a.dashCd=Math.max(0,a.dashCd-dt);a.teleCd=Math.max(0,a.teleCd-dt);b.shotCd=Math.max(0,b.shotCd-dt);
  a.facing=b.x>=a.x?1:-1;b.facing=a.x>=b.x?1:-1;const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(1,Math.hypot(dx,dy)),nx=dx/d,ny=dy/d;
  // Bastion: slow approach, burst commitment, rare teleport to break stalemates.
  if(a.dashLeft>0){const ox=a.x,oy=a.y;a.x+=a.vx*dt;a.y+=a.vy*dt;bound(a);a.dashLeft-=dt;
@@ -69,6 +69,13 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
     if(f.hp===0){f.alive=false;event(s,`${f.name} falls to arena hazard`);}
    }
   }
+ }
+ // Bastion shield shove: disrupts a nearby opponent and awards a capture burst.
+ if(s.hill&&a.alive&&b.alive&&a.shieldCd<=0&&distance(a,s.hill)<s.hill.r+16&&distance(a,b)<105){
+  const dist=distance(a,b)||1,ux=(b.x-a.x)/dist,uy=(b.y-a.y)/dist;
+  b.x+=ux*95;b.y+=uy*95;bound(b);b.vx=ux*175;b.vy=uy*175;
+  a.shieldCd=6;a.abilities++;effect(s,b.x,b.y,'#ffb96c','impact');event(s,'BASTION shield shoves VESPER');
+  s.hill.scores[0]+=3;
  }
  // King of the Hill: uncontested occupancy accumulates capture time.
  // A contested hill awards neither side points; combat continues normally.
