@@ -34,7 +34,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
   if(a.dashLeft<=0){a.vx*=.18;a.vy*=.18;}
  }else{
   const lateral=(a.strafe||1)*.16;
-  {const [ox,oy]=objectiveSteer(s,a,nx-ny*lateral,ny+nx*lateral);const [ax,ay]=hazardAvoid(s,a,ox,oy);move(a,ax,ay,dt,s.hill?110:a.walk,350)}
+  {const [ox,oy]=objectiveSteer(s,a,nx-ny*lateral,ny+nx*lateral);const [ax,ay]=hazardAvoid(s,a,ox,oy);move(a,ax,ay,dt,s.hill?82:a.walk,350)}
   if(a.teleCd<=0&&(d>155||a.hp/a.maxHp<.45)&&s.random()<dt*.95)teleport(s,a,b);
   const nd=distance(a,b);
   if(a.dashCd<=0&&nd<250){const lead=.12;let tx=b.x+b.vx*lead-a.x,ty=b.y+b.vy*lead-a.y;const m=Math.hypot(tx,ty)||1;
