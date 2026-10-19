@@ -11,7 +11,7 @@ function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function create(seed=1,settings={}){const mode=settings.mode==='hill'?'hill':'duel';const random=rng(seed),angle=random()*TAU,offset=125,swap=random()<.5?1:-1;
  const cfg={BASTION:{...BASE.BASTION,...(settings.BASTION||{})},VESPER:{...BASE.VESPER,...(settings.VESPER||{})}};
  const agents=['BASTION','VESPER'].map((key,i)=>{const t=cfg[key],a=angle+(i?Math.PI:0);return {...t,key,id:i,x:CX+Math.cos(a)*offset,y:CY+Math.sin(a)*offset,vx:0,vy:0,hp:t.hp,maxHp:t.hp,alive:true,heading:a+(i?Math.PI:0),dashCd:i===0?random()*.6:0,teleCd:i===0?2+random()*1.4:0,shotCd:i===1?random()*.45:0,dashLeft:0,dashHit:false,shieldCd:3+random()*2,teleFx:0,shotFx:0,facing:i===0?1:-1,flash:0,aim:0,strafe:swap,decision:0,stun:0,dealt:0,shots:0,hits:0,abilities:0}});
- return {seed,random,cfg,agents,time:0,ended:false,winner:null,reason:'',events:[],projectiles:[],effects:[],lastDamage:0,damageRamp:0,hazards:[],hazardCycle:-1,mode,hill:mode==='hill'?{x:CX,y:CY,r:65,scores:[0,0],target:14,owner:-1}:null};}
+ return {seed,random,cfg,agents,time:0,ended:false,winner:null,reason:'',events:[],projectiles:[],effects:[],lastDamage:0,damageRamp:0,hazards:[],hazardCycle:-1,mode,hill:mode==='hill'?{x:CX,y:CY,r:65,scores:[0,0],target:14,owner:-1,round:0,interval:10,nextMove:10}:null};}
 function event(s,msg){s.events.push({time:s.time,msg});if(s.events.length>25)s.events.shift()}
 function effect(s,x,y,color,type='spark'){if(s.effects.length<100)s.effects.push({x,y,color,type,life:.35})}
 function bound(a){const dx=a.x-CX,dy=a.y-CY,d=Math.hypot(dx,dy),lim=R-14;if(d>lim){const nx=dx/d,ny=dy/d;a.x=CX+nx*lim;a.y=CY+ny*lim;const v=a.vx*nx+a.vy*ny;if(v>0){a.vx-=v*nx;a.vy-=v*ny}}}
@@ -34,7 +34,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
   if(a.dashLeft<=0){a.vx*=.18;a.vy*=.18;}
  }else{
   const lateral=(a.strafe||1)*.16;
-  {const [ox,oy]=objectiveSteer(s,a,nx-ny*lateral,ny+nx*lateral);const [ax,ay]=hazardAvoid(s,a,ox,oy);move(a,ax,ay,dt,s.hill?82:a.walk,350)}
+  {const [ox,oy]=objectiveSteer(s,a,nx-ny*lateral,ny+nx*lateral);const [ax,ay]=hazardAvoid(s,a,ox,oy);move(a,ax,ay,dt,s.hill?66:a.walk,350)}
   if(!s.hill&&a.teleCd<=0&&(d>155||a.hp/a.maxHp<.45)&&s.random()<dt*.95)teleport(s,a,b);
   const nd=distance(a,b);
   if((!s.hill||distance(a,s.hill)<s.hill.r*.65)&&a.dashCd<=0&&nd<250){const lead=.12;let tx=b.x+b.vx*lead-a.x,ty=b.y+b.vy*lead-a.y;const m=Math.hypot(tx,ty)||1;
@@ -70,12 +70,19 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
    }
   }
  }
+ // Relocate the sole hill on a fixed clock; occupancy never delays relocation.
+ if(s.hill&&s.time+1e-8>=s.hill.nextMove){
+  const h=s.hill;h.round++;h.nextMove+=h.interval;
+  const theta=s.random()*TAU,rad=85+Math.sqrt(s.random())*85;
+  h.x=CX+Math.cos(theta)*rad;h.y=CY+Math.sin(theta)*rad;
+  h.owner=-1;event(s,'HILL RELOCATED — MOVE TO NEW ZONE');
+ }
  // Bastion shield shove: disrupts a nearby opponent and awards a capture burst.
  if(s.hill&&a.alive&&b.alive&&a.shieldCd<=0&&distance(a,s.hill)<s.hill.r+16&&distance(a,b)<105){
   const dist=distance(a,b)||1,ux=(b.x-a.x)/dist,uy=(b.y-a.y)/dist;
   b.x+=ux*95;b.y+=uy*95;bound(b);b.vx=ux*175;b.vy=uy*175;
   a.shieldCd=6;a.abilities++;effect(s,b.x,b.y,'#ffb96c','impact');event(s,'BASTION shield shoves VESPER');
-  s.hill.scores[0]+=3;
+  s.hill.scores[0]+=1;
  }
  // King of the Hill: uncontested occupancy accumulates capture time.
  // A contested hill awards neither side points; combat continues normally.
