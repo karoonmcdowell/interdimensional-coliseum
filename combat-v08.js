@@ -14,7 +14,7 @@ function hit(s,a,b,m){if(!b.alive||a.hitDone)return;const d=dist(a,b);if(d>m.ran
  a.hitDone=true;const blocked=b.state==='block'&&b.guard>0;
  if(blocked){b.blocks++;b.guard=Math.max(0,b.guard-m.guard);b.hp=Math.max(0,b.hp-m.damage*.08);fx(s,b,'#f4d28b','block');event(s,b.name+' BLOCKS '+a.move.toUpperCase());b.vx=dx*65;b.vy=dy*65;if(b.guard<=0){b.state='guardbreak';b.phase='stun';b.timer=.85;b.guardBreaks++;fx(s,b,'#d68cff','break');event(s,b.name+' GUARD BROKEN!')}return}
  b.hp=Math.max(0,b.hp-m.damage);a.hits++;a.damageDealt+=m.damage;b.flash=.17;
- if(b.comboTimer>0){a.combo++;}else{a.combo=1}a.comboTimer=1.2;a.maxCombo=Math.max(a.maxCombo,a.combo);
+ if(b.comboTimer>0){a.combo++;}else{a.combo=1}a.comboTimer=2.1;a.maxCombo=Math.max(a.maxCombo,a.combo);
  const bonus=a.combo>1?Math.min(.12,(a.combo-1)*.04):0;
  b.state='hitstun';b.phase='stun';b.timer=m.stun+bonus;b.hitstun=b.timer;b.vx=dx*m.push;b.vy=dy*m.push;fx(s,b,m.color);event(s,a.name+' '+a.move.toUpperCase()+(a.combo>1?' · '+a.combo+' HIT COMBO':''));
  if(b.hp<=0){b.alive=false;event(s,a.name+' KNOCKOUT!')}
@@ -24,7 +24,7 @@ function separate(a,b){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>=42)
 function choose(s,f,o){const d=dist(f,o),r=s.random();if(o.state==='startup'&&d<95&&r<.7){guard(f);return}if((o.state==='heavy'||o.state==='breaker')&&o.phase==='startup'&&d<95&&r<.76){guard(f);return}
  if(d>91)return;
  if(o.state==='block'&&r<.62){begin(f,'breaker');return}
- if(o.state==='hitstun'||o.state==='wallsplat'||o.state==='guardbreak'){begin(f,d<74?'light':'heavy');return}
+ if(o.state==='hitstun'||o.state==='wallsplat'||o.state==='guardbreak'){if(d<90)begin(f,'light');return}
  if(r<.52)begin(f,'light');else if(r<.82)begin(f,'heavy');else if(r<.92)begin(f,'breaker');else guard(f)}
 function step(s,dt=DT){if(s.ended)return;s.time+=dt;for(const e of s.effects)e.life-=dt;s.effects=s.effects.filter(e=>e.life>0);
  for(const f of s.agents){const o=s.agents[1-f.id];f.facing=Math.atan2(o.y-f.y,o.x-f.x);f.flash=Math.max(0,f.flash-dt);f.cooldown=Math.max(0,f.cooldown-dt);f.comboTimer=Math.max(0,f.comboTimer-dt);if(f.comboTimer<=0)f.combo=0;if(f.state!=='block')f.guard=Math.min(100,f.guard+11*dt);
@@ -33,7 +33,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;for(const e of s.effects)e.l
  f.x+=f.vx*dt;f.y+=f.vy*dt;bound(s,f)}
  separate(s.agents[0],s.agents[1]);for(const f of s.agents)bound(s,f);
  for(const f of s.agents){if(!f.alive||f.state==='neutral')continue;f.timer-=dt;f.elapsed+=dt;
- if(MOVES[f.state]){const m=MOVES[f.state];if(f.phase==='startup'&&f.timer<=0){f.phase='active';f.timer+=m.active}if(f.phase==='active'){hit(s,f,s.agents[1-f.id],m);if(f.timer<=0){f.phase='recovery';f.timer+=m.recovery}}else if(f.phase==='recovery'&&f.timer<=0){f.state='neutral';f.phase='';f.cooldown=.035+s.random()*.075}}
+ if(MOVES[f.state]){const m=MOVES[f.state];if(f.phase==='startup'&&f.timer<=0){f.phase='active';f.timer+=m.active}if(f.phase==='active'){hit(s,f,s.agents[1-f.id],m);if(f.timer<=0){f.phase='recovery';f.timer+=m.recovery}}else if(f.phase==='recovery'&&f.timer<=0){f.state='neutral';f.phase='';f.cooldown=.015+s.random()*.045}}
  else if(f.timer<=0){f.state='neutral';f.phase='';f.cooldown=f.state==='block'?.08:.08+s.random()*.08}}
  if(s.time>=55||s.agents.some(f=>!f.alive)){s.ended=true;const [a,b]=s.agents;s.winner=a.hp>=b.hp?a:b;s.reason=s.agents.some(f=>!f.alive)?'knockout':'decision';event(s,s.winner.name+' WINS BY '+s.reason.toUpperCase())}
 }
