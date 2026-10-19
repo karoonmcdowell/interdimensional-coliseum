@@ -17,6 +17,7 @@ function effect(s,x,y,color,type='spark'){if(s.effects.length<100)s.effects.push
 function bound(a){const dx=a.x-CX,dy=a.y-CY,d=Math.hypot(dx,dy),lim=R-14;if(d>lim){const nx=dx/d,ny=dy/d;a.x=CX+nx*lim;a.y=CY+ny*lim;const v=a.vx*nx+a.vy*ny;if(v>0){a.vx-=v*nx;a.vy-=v*ny}}}
 function hit(s,attacker,victim,raw,kind){if(!victim.alive)return;const dmg=Math.max(1,raw*(1-victim.armor));victim.hp=Math.max(0,victim.hp-dmg);victim.flash=.14;attacker.dealt+=dmg;attacker.hits++;s.lastDamage=s.time;effect(s,victim.x,victim.y,victim.color);if(victim.hp<=0){victim.alive=false;event(s,`${attacker.name} eliminates ${victim.name} (${kind})`);}}
 function move(a,dx,dy,dt,speed,accel=550){const mag=Math.hypot(dx,dy)||1;const tx=dx/mag*speed,ty=dy/mag*speed;const k=Math.min(1,accel*dt/Math.max(1,Math.hypot(tx-a.vx,ty-a.vy)));a.vx+=(tx-a.vx)*k;a.vy+=(ty-a.vy)*k;a.x+=a.vx*dt;a.y+=a.vy*dt;bound(a)}
+function hazardAvoid(s,f,dx,dy){const z=s.hazards[0];if(!z||s.time>=z.end)return [dx,dy];const dist=Math.hypot(f.x-z.x,f.y-z.y),danger=z.r+25;if(dist>=danger)return [dx,dy];const urgency=s.time>=z.activeAt?2.8:1.5;const awayX=(f.x-z.x)/(dist||1),awayY=(f.y-z.y)/(dist||1);return [dx+awayX*urgency,dy+awayY*urgency]}
 function teleport(s,a,b){const r=s.random();let best=null,bestScore=-1e9;for(let i=0;i<12;i++){const theta=s.random()*TAU,rr=45+Math.sqrt(s.random())*(R-67),x=CX+Math.cos(theta)*rr,y=CY+Math.sin(theta)*rr,d=Math.hypot(x-b.x,y-b.y);const score=-Math.abs(d-105)+s.random()*40;if(score>bestScore){bestScore=score;best={x,y}}}
  effect(s,a.x,a.y,a.color,'warp');a.x=best.x;a.y=best.y;a.vx=0;a.vy=0;a.teleCd=a.teleCD;a.teleFx=.4;a.abilities++;effect(s,a.x,a.y,a.color,'warp');event(s,'BASTION teleports');}
 function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agents[1];
@@ -32,7 +33,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
   if(a.dashLeft<=0){a.vx*=.18;a.vy*=.18;}
  }else{
   const lateral=(a.strafe||1)*.16;
-  move(a,nx-ny*lateral,ny+nx*lateral,dt,a.walk,350);
+  {const [ax,ay]=hazardAvoid(s,a,nx-ny*lateral,ny+nx*lateral);move(a,ax,ay,dt,a.walk,350)}
   if(a.teleCd<=0&&(d>155||a.hp/a.maxHp<.45)&&s.random()<dt*.95)teleport(s,a,b);
   const nd=distance(a,b);
   if(a.dashCd<=0&&nd<250){const lead=.12;let tx=b.x+b.vx*lead-a.x,ty=b.y+b.vy*lead-a.y;const m=Math.hypot(tx,ty)||1;
@@ -45,7 +46,7 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const a=s.agents[0],b=s.agen
  let mx=ux*forward-uy*b.strafe*.85,my=uy*forward+ux*b.strafe*.85;
  const edge=Math.hypot(b.x-CX,b.y-CY);if(edge>R-65){mx+=(CX-b.x)/edge*2.2;my+=(CY-b.y)/edge*2.2;}
  if(a.dashLeft>0&&dd<110){mx-=ux*1.2;my-=uy*1.2;}
- move(b,mx,my,dt,b.walk,780);
+ [mx,my]=hazardAvoid(s,b,mx,my);move(b,mx,my,dt,b.walk,780);
  if(b.shotCd<=0){const dd2=distance(a,b);if(dd2<340){const flight=dd2/b.bulletSpeed,tx=a.x+a.vx*flight*.65-b.x,ty=a.y+a.vy*flight*.65-b.y,m=Math.hypot(tx,ty)||1;
  const spread=(s.random()-.5)*.12,cs=Math.cos(spread),sn=Math.sin(spread);s.projectiles.push({x:b.x,y:b.y,vx:(tx/m*cs-ty/m*sn)*b.bulletSpeed,vy:(tx/m*sn+ty/m*cs)*b.bulletSpeed,life:1.7,owner:1});b.shotCd=b.shotCD*(.90+s.random()*.2);b.shots++;b.shotFx=.22;effect(s,b.x+12*b.facing,b.y-11,b.color,'muzzle');}}
  }
