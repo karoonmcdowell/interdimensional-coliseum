@@ -3,8 +3,8 @@
 const CX=270,CY=300,R=218,DT=1/60,TAU=Math.PI*2;
 function rng(seed){let s=seed>>>0;return()=>{s+=0x6D2B79F5;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
 const configs=[
- {name:'BASTION',color:'#ff816f',hp:340,speed:92,reach:45,attack:20,guard:.72,weight:1.25},
- {name:'VESPER',color:'#6bd5ff',hp:280,speed:119,reach:52,attack:16,guard:.68,weight:1}
+ {name:'BASTION',color:'#ff816f',hp:235,speed:108,reach:45,attack:20,guard:.72,weight:1.25},
+ {name:'VESPER',color:'#6bd5ff',hp:220,speed:112,reach:52,attack:16,guard:.68,weight:1}
 ];
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function create(seed=1){const random=rng(seed),angle=random()*TAU;const agents=configs.map((t,i)=>({...t,id:i,x:CX+Math.cos(angle+i*Math.PI)*125,y:CY+Math.sin(angle+i*Math.PI)*125,vx:0,vy:0,facing:0,alive:true,maxHp:t.hp,guardMeter:100,state:'neutral',stateLeft:0,cooldown:.3+random()*.3,decision:0,strafe:i?1:-1,blocking:false,stun:0,flash:0,attackType:'',attackHit:false,dashes:0,hits:0,blocks:0,counters:0,damage:0}));return{mode:'duel',seed,random,agents,time:0,ended:false,winner:null,reason:'',events:[],effects:[],projectiles:[],hill:null,round:1}}
@@ -20,15 +20,15 @@ function step(s,dt=DT){if(s.ended)return;s.time+=dt;const [a,b]=s.agents;
  for(const e of s.effects)e.life-=dt;s.effects=s.effects.filter(e=>e.life>0);
  for(const f of s.agents){const other=s.agents[1-f.id];f.flash=Math.max(0,f.flash-dt);f.cooldown=Math.max(0,f.cooldown-dt);f.guardMeter=Math.min(100,f.guardMeter+(f.state==='block'?0:13)*dt);f.facing=Math.atan2(other.y-f.y,other.x-f.x);
   if(f.state!=='neutral'){f.stateLeft-=dt;if(f.state==='dash'){f.vx=f.dashX*340;f.vy=f.dashY*340}else if(f.state==='sidestep'){f.vx=f.sideX*225;f.vy=f.sideY*225}else{f.vx*=Math.max(0,1-dt*12);f.vy*=Math.max(0,1-dt*12)}
-   if((f.state==='jab'||f.state==='heavy')&&!f.attackHit){const elapsed=(f.phase+f.active+f.recovery)-f.stateLeft;if(elapsed>=f.phase&&elapsed<f.phase+f.active&&distance(f,other)<(f.state==='heavy'?66:56)){const facingDot=((other.x-f.x)*Math.cos(f.facing)+(other.y-f.y)*Math.sin(f.facing))/Math.max(1,distance(f,other));if(facingDot>.25){f.attackHit=true;hurt(s,f,other,f.attack*(f.state==='heavy'?1.75:1),f.state==='heavy')}}}
-   if(f.stateLeft<=0){f.state='neutral';f.blocking=false;f.cooldown=.12+s.random()*.16}
-  }else{const d=distance(f,other),ux=(other.x-f.x)/(d||1),uy=(other.y-f.y)/(d||1);let forward=d>65?1:d<43?-.7:0;const lateral=f.strafe*.23;let mx=ux*forward-uy*lateral,my=uy*forward+ux*lateral;const edge=Math.hypot(f.x-CX,f.y-CY);if(edge>R-60){mx+=(CX-f.x)/edge*2;my+=(CY-f.y)/edge*2}const m=Math.hypot(mx,my)||1;f.vx+=(mx/m*f.speed-f.vx)*Math.min(1,dt*10);f.vy+=(my/m*f.speed-f.vy)*Math.min(1,dt*10);
-   if(f.cooldown<=0&&other.alive){const r=s.random();if(other.state==='heavy'&&d<100&&r<.58)act(s,f,other,r<.25?'counter':'sidestep');else if(other.state==='jab'&&d<72&&r<.7)act(s,f,other,r<.22?'counter':'block');else if(d<64)act(s,f,other,r<.37?'jab':r<.65?'heavy':r<.83?'block':'sidestep');else if(d<140&&r<.14)act(s,f,other,'dash');else if(d<120&&r<.23)act(s,f,other,'sidestep')}
+   if((f.state==='jab'||f.state==='heavy')&&!f.attackHit){const elapsed=(f.phase+f.active+f.recovery)-f.stateLeft;if(elapsed>=f.phase&&elapsed<f.phase+f.active&&distance(f,other)<(f.state==='heavy'?66:56)){const facingDot=((other.x-f.x)*Math.cos(f.facing)+(other.y-f.y)*Math.sin(f.facing))/Math.max(1,distance(f,other));if(facingDot>.25){f.attackHit=true;hurt(s,f,other,f.attack*(f.state==='heavy'?2.0:1.25),f.state==='heavy')}}}
+   if(f.stateLeft<=0){f.state='neutral';f.blocking=false;f.cooldown=.04+s.random()*.12}
+  }else{const d=distance(f,other),ux=(other.x-f.x)/(d||1),uy=(other.y-f.y)/(d||1);let forward=d>52?1:d<38?-.45:0;const lateral=f.strafe*.23;let mx=ux*forward-uy*lateral,my=uy*forward+ux*lateral;const edge=Math.hypot(f.x-CX,f.y-CY);if(edge>R-60){mx+=(CX-f.x)/edge*2;my+=(CY-f.y)/edge*2}const m=Math.hypot(mx,my)||1;f.vx+=(mx/m*f.speed-f.vx)*Math.min(1,dt*10);f.vy+=(my/m*f.speed-f.vy)*Math.min(1,dt*10);
+   if(f.cooldown<=0&&other.alive){const r=s.random();if(other.state==='heavy'&&d<100&&r<.58)act(s,f,other,r<.25?'counter':'sidestep');else if(other.state==='jab'&&d<72&&r<.7)act(s,f,other,r<.22?'counter':'block');else if(d<75)act(s,f,other,r<.37?'jab':r<.65?'heavy':r<.83?'block':'sidestep');else if(d<140&&r<.14)act(s,f,other,'dash');else if(d<120&&r<.23)act(s,f,other,'sidestep')}
   }
   f.x+=f.vx*dt;f.y+=f.vy*dt;bound(f);
  }
  separate(a,b);
- if(!a.alive||!b.alive||s.time>=60){s.ended=true;s.winner=a.hp>b.hp?a:b;s.reason=(!a.alive||!b.alive)?'knockout':'decision';event(s,s.winner.name+' wins by '+s.reason)}
+ if(!a.alive||!b.alive||s.time>=45){s.ended=true;s.winner=a.hp>b.hp?a:b;s.reason=(!a.alive||!b.alive)?'knockout':'decision';event(s,s.winner.name+' wins by '+s.reason)}
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={create,step,CX,CY,R,DT};else root.ColiseumFighting={create,step,CX,CY,R,DT};
 })(typeof window!=='undefined'?window:null);
